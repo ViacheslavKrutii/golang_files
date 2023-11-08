@@ -64,12 +64,12 @@ func (w *MostRepeatedWordsStrategy) Action(text string) {
 }
 
 func removeExtraSpaces(text string) string {
-	// Видаляє всі послідовності пробілів довжиною більше одного
-	re := regexp.MustCompile(`\s+`)
+	// Видаляє всі послідовності пробілів, окрім символів нового рядка
+	re := regexp.MustCompile(`[^\S\n]+`)
 	cleanedText := re.ReplaceAllString(text, " ")
 
 	// Видаляє пробіли з початку і кінця рядка
-	cleanedText = regexp.MustCompile(`^\s+|\s+$`).ReplaceAllString(cleanedText, "")
+	cleanedText = regexp.MustCompile(`(^\s+|\s+$)`).ReplaceAllString(cleanedText, "")
 
 	return cleanedText
 }
@@ -90,9 +90,12 @@ func (e *extraSpacesDecoratorStrategy) Action(text string) {
 
 func main() {
 	filename := flag.String("input", "input.txt", "Ім'я вхідного файлу")
+	strategyType := flag.String("strategy", "wordCount", "Виберіть стратегію (wordCount або MostRepeatedWords)")
+	decorator := flag.String("decorator", "none", "Видалити зайві пробіли removeExtraSpaces(за замовчуванням none)")
 
 	flag.Parse()
 
+	// Читаємо файл
 	data, err := os.ReadFile(*filename)
 	if err != nil {
 		fmt.Println("Помилка читання файлу:", err)
@@ -100,14 +103,33 @@ func main() {
 	}
 
 	text := string(data)
-	newTO := newTxtObj(text, &wordCount{})
 
-	// Використовуємо декоратор для видалення зайвих пробілів
-	newTO.strategy = extraSpacesDecorator(newTO.strategy)
+	// Обираємо стратегію
+	var selectedStrategy strategy
 
-	newTO.Action()
+	switch *strategyType {
+	case "wordCount":
+		selectedStrategy = &wordCount{}
+	case "MostRepeatedWords":
+		selectedStrategy = &MostRepeatedWordsStrategy{}
+	default:
+		fmt.Println("Невідома стратегія")
+		return
+	}
 
-	// Змінюємо стратегію на підрахунок найбільше повторюваних слів і виконуємо знову
-	newTO.ChangeStrategy(&MostRepeatedWordsStrategy{})
+	// Створюємо новий текстовий об'єкт
+	newTO := newTxtObj(text, selectedStrategy)
+
+	// Обираємо декоратор
+	switch *decorator {
+	case "none":
+
+	case "removeExtraSpaces":
+		newTO.strategy = extraSpacesDecorator(newTO.strategy)
+	default:
+		fmt.Println("Невідомий декоратор")
+		return
+	}
+
 	newTO.Action()
 }
